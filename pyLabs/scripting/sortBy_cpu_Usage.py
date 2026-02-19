@@ -4,11 +4,6 @@ servers = [
     {"name": "cache-1", "cpu": 60},
     {"name": "web-2", "cpu": 85},
 ]
-
-
-
-
-
 # print(servers_sorted)
 
 sorted_list=[]

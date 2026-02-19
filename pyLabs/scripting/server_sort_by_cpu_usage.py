@@ -9,7 +9,7 @@ servers_sorted = sorted(servers,
                         key = lambda x: x['cpu'],
                         reverse= True)
 
-print(servers_sorted)
+# print(servers_sorted)
 
 for servers in servers_sorted:
     print(servers['name'])
