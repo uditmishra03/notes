@@ -4,7 +4,7 @@
 #!/bin/bash
 cpu=$(top -bn1 | grep Cpu | awk '{printf "%0.f" ,100 - $8}')
 mem=`free | awk '/Mem/ {printf "%.0f", $3/$2 * 100}'`
-disk=$(df / | awk '/overlay/ {print $5}' | sed 's/%//')
+disk=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
 
 echo "CPU Usage: $cpu%"
 echo "Mem usage: $mem%"
