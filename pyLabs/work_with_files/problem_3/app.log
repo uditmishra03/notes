@@ -1,0 +1,6 @@
+ERROR Disk full
+INFO Service started
+ERROR Timeout
+
+WARNING Memory high
+ERROR DB connection failed
