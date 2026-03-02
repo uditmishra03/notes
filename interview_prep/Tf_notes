@@ -1,0 +1,43 @@
+Q1.
+
+Why do we store Terraform state remotely instead of locally?
+
+⸻
+
+Q2.
+
+Two engineers run terraform apply simultaneously — what happens and how do you prevent it?
+
+⸻
+
+Q3.
+
+Why not let developers create infra manually from AWS console if Terraform exists?
+
+---
+Terraform drift happens when infrastructure is modified outside Terraform — for example manual console changes.
+
+Drift is detected using terraform plan, where Terraform compares:
+	•	the real infrastructure state,
+	•	against the Terraform state file,
+	•	and the desired configuration in code.
+
+If differences appear that were not introduced via code, that indicates drift.
+
+Once detected, we decide whether the manual change was intentional or not:
+	•	If unintended → run terraform apply to reconcile back to desired state.
+	•	If intentional → update Terraform code or import the change so state and code stay aligned.
+
+	---
+
+Terraform uses state locking to prevent concurrent modifications.
+
+Before running terraform apply, Terraform tries to acquire a lock on the state file.
+	•	If Engineer A has the lock, Engineer B cannot modify the state and the operation is blocked or fails.
+	•	Once the apply completes, the lock is released.
+
+In AWS, we typically store state in S3 and use DynamoDB for distributed locking.
+
+This prevents race conditions, state corruption, and conflicting infrastructure changes.
+
+⸻
