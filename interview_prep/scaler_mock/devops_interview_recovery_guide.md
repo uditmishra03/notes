@@ -134,79 +134,124 @@ Logic
 
 # Production Style Implementation
 
+**Scenario:** You have a file `urls.txt` with 100 URLs. Curl each URL with max 5 concurrent requests. Log failures.
+
+**urls.txt example:**
+```
+https://api.example.com/health
+https://api.example.com/users
+https://api.example.com/orders
+...
+```
+
+**Script:**
 ```bash
 #!/bin/bash
 
-tasks=$(seq 1 100)
+URL_FILE="urls.txt"
+MAX_CONCURRENT=5
 
-run_task() {
-    id=$1
-    echo "Starting task $id"
+curl_url() {
+    url=$1
+    echo "Fetching: $url"
     
-    sleep $((RANDOM % 5))
-
-    if [ $((RANDOM % 5)) -eq 0 ]; then
-        echo "Task $id failed at $(date)" >> failures.log
+    # Curl with timeout, silent mode, fail on HTTP errors
+    curl -sf --connect-timeout 5 --max-time 10 "$url" > /dev/null
+    
+    # Check actual exit code
+    if [ $? -ne 0 ]; then
+        echo "FAILED: $url at $(date)" >> failures.log
     fi
 }
 
-for t in $tasks
+# Read URLs from file
+while IFS= read -r url
 do
-    run_task $t &
+    curl_url "$url" &
 
-    if [[ $(jobs -r | wc -l) -ge 5 ]]
+    # Enforce concurrency limit
+    if [[ $(jobs -r | wc -l) -ge $MAX_CONCURRENT ]]
     then
         wait -n
     fi
-done
+done < "$URL_FILE"
 
+# Wait for remaining jobs to finish
 wait
+
+echo "Done. Check failures.log for any failed URLs."
 ```
+
+**Curl flags explained:**
+
+| Flag                  | Purpose                                 |
+| --------------------- | --------------------------------------- |
+| `-s`                  | Silent mode (no progress bar)           |
+| `-f`                  | Fail silently on HTTP errors (4xx, 5xx) |
+| `--connect-timeout 5` | Max 5 seconds to connect                |
+| `--max-time 10`       | Max 10 seconds total                    |
+| `> /dev/null`         | Discard response body                   |
+
+**Exit code check:**
+```bash
+if [ $? -ne 0 ]; then
+```
+- `$?` = exit code of last command
+- `-ne 0` = not equal to 0 (0 = success)
+- Logs actual failures, not simulated ones
 
 ---
 
 # Step-by-Step Explanation (Interview Level)
 
-## Step 1 – Background execution
+## Step 1 – Read URLs from file
 
-```
-run_task $t &
+```bash
+while IFS= read -r url
+do
+    ...
+done < "$URL_FILE"
 ```
 
-This runs each task **asynchronously**.
+- `IFS=` prevents trimming whitespace
+- `-r` prevents backslash escaping
+- `< "$URL_FILE"` feeds file as input
 
 ---
 
-## Step 2 – Check running jobs
+## Step 2 – Background execution
 
+```bash
+curl_url "$url" &
 ```
+
+The `&` runs each curl **asynchronously** in the background.
+
+---
+
+## Step 3 – Check running jobs
+
+```bash
 jobs -r | wc -l
 ```
 
-This tells how many tasks are running.
-
-Example
-
-```
-4 running jobs
-```
+This tells how many curl requests are currently running.
 
 ---
 
-## Step 3 – Enforce concurrency limit
+## Step 4 – Enforce concurrency limit
 
-```
-if [[ $(jobs -r | wc -l) -ge 5 ]]
+```bash
+if [[ $(jobs -r | wc -l) -ge $MAX_CONCURRENT ]]
 ```
 
-If running tasks >= 5
-we stop launching new tasks.
+If running jobs >= 5, we pause before launching more.
 
 ---
 
-## Step 4 – Wait for slot to free
+## Step 5 – Wait for slot to free
 
-```
+```bash
 wait -n
 ```
 
@@ -214,13 +259,27 @@ This waits for **one job to finish** before launching the next.
 
 ---
 
-## Step 5 – Final wait
+## Step 6 – Final wait
 
-```
+```bash
 wait
 ```
 
-Ensures script waits for all tasks to finish.
+Ensures script waits for all remaining curl requests to finish.
+
+---
+
+## Step 7 – Real failure logging
+
+```bash
+if [ $? -ne 0 ]; then
+    echo "FAILED: $url at $(date)" >> failures.log
+fi
+```
+
+- `$?` captures the **actual exit code** of curl
+- Non-zero exit code = real failure (network error, timeout, HTTP 4xx/5xx)
+- Logs the URL that failed, not just a random simulation
 
 ---
 
@@ -231,7 +290,7 @@ Because it shows
 - knowledge of bash job control
 - concurrency design
 - resource protection
-- failure logging
+- **real failure detection** using exit codes
 
 ---
 
@@ -241,14 +300,39 @@ Tools that can solve this easier
 
 ### GNU Parallel
 
-```
-parallel -j5 run_task ::: {1..100}
+```bash
+cat urls.txt | parallel -j5 'curl -sf {} || echo "FAILED: {}" >> failures.log'
 ```
 
 ### xargs
 
+```bash
+cat urls.txt | xargs -P 5 -I{} sh -c 'curl -sf {} || echo "FAILED: {}" >> failures.log'
 ```
-seq 100 | xargs -P 5 -I{} run_task {}
+
+ALTERNATE VERSION:
+```
+URL_FILE="urls"
+
+while IFS = read -r url
+do
+(
+    curl -sf $url > /dev/null
+    if [ $? -ne 0 ]; then
+    echo "Failed : $url at $(date)" >> failure.log
+    fi
+)&
+
+if [ $(jobs -r | wc -l) -ge 5 ]; then
+    wait -n
+fi
+
+done > "$URL_FILE"
+
+wait
+
+echo "Completed all url execution"
+
 ```
 
 Mentioning alternatives shows **engineering maturity**.
