@@ -1,0 +1,33 @@
+aws ec2 describe-instances --filters Name=dev-ec2,Values=running
+
+
+aws ec2 describe-instances --region ap-south-1 --query 'Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Name:Name}' --output table
+
+aws ec2 describe-instances --region ap-south-1 --query 'Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Name:Tags[?Key==`Name`]| [0].Value}' --output table
+
+aws ec2 describe-instances --region us-east-1 --query 'Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Name:Tags[?Key==`Name`]| [0].Value}' --output table
+
+aws ec2 describe-instances --region us-east-1 --filters "Name=instance-state-name,Values=running" --query 'Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Name:Tags[?Key==`Name`]| [0].Value}' --output table
+
+
+aws ec2 describe-instances --region us-east-2 --query 'Reservations[].Instances[].{InstanceId:InstanceId,State:State.Name,Name:Tags[?Key==`Name`]| [0].Value}' --output table
+
+
+
+aws ec2 describe-vpcs \
+  --query "Vpcs[*].{VPC_ID:VpcId,Name:Tags[?Key=='Name']|[0].Value,CIDR:CidrBlock,State:State,IsDefault:IsDefault}" \
+  --output table
+
+---
+ap-south-1: ami-0f559c3642608c138
+
+us-east-1: ami-02dfbd4ff395f2a1b 
+
+us-east-2: ami-0b0b78dcacbab728f
+
+
+aws s3 ls
+
+aws iam list-roles
+
+aws iam list-roles --query 'Roles[].RoleName'
